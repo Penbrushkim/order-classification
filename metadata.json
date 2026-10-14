@@ -1,0 +1,8 @@
+{
+  "name": "주문분류 & 내역",
+  "description": "귀금속 주문 텍스트 분류 및 시세별 주문 정산 계산기 (V3.6.0)",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
