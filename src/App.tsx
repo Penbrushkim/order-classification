@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Copy, Check, FileText, ArrowRightLeft, Moon, Sun, Settings, Link as LinkIcon, List, Layout, Calculator, History, Smartphone, MessageSquare } from 'lucide-react';
+import { Copy, Check, FileText, ArrowRightLeft, Moon, Sun, Settings, Link as LinkIcon, List, Layout, Calculator, History, Smartphone, MessageSquare, Palette } from 'lucide-react';
 
 const decodeColor = (code: string): string => {
   if (!code) return '';
@@ -30,6 +30,12 @@ const decodeColor = (code: string): string => {
     }
   }
   return results.join(' + ');
+};
+
+// 색상 코드 없이 "K14 0.75" 처럼 순도 바로 뒤에 기재된 중량(돈)을 읽는다.
+const extractListedWeight = (line: string): number => {
+  const m = line.match(/(?:K14|K18|K24|14K|18K|24K)\s+(?:[A-Za-z]{1,4}\s+)?(\d+(?:\.\d+)?)(?![\d.]|\s*(?:g|cm|mm|호))/i);
+  return m ? parseFloat(m[1]) : 0;
 };
 
 const initialSpecialVendors = [
@@ -95,13 +101,21 @@ function getCharColors(rootNode: HTMLElement) {
 
 export default function App() {
   const [isDark, setIsDark] = useState(false);
+  const [theme, setTheme] = useState<'classic' | 'modern'>(() => {
+    try { return localStorage.getItem('order-theme') === 'modern' ? 'modern' : 'classic'; } catch { return 'classic'; }
+  });
+  const toggleTheme = () => {
+    const next = theme === 'classic' ? 'modern' : 'classic';
+    setTheme(next);
+    try { localStorage.setItem('order-theme', next); } catch {}
+  };
   const [parsedData, setParsedData] = useState<Record<string, any[]>>({});
   const [copied, setCopied] = useState(false);
   const [bulkCopied, setBulkCopied] = useState(false);
   const [copiedPreview, setCopiedPreview] = useState(false);
   const [copiedSMS, setCopiedSMS] = useState(false);
   const [trigger, setTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<'class1' | 'class2' | 'historyResult' | 'calculationB' | 'calculationC' | 'calculationD' | 'link'>('calculationD');
+  const [activeTab, setActiveTab] = useState<'class1' | 'class2' | 'historyResult' | 'calculationB' | 'calculationC' | 'calculationD' | 'link'>('calculationB');
   const [activeInputTab, setActiveInputTab] = useState<'input' | 'history'>('history');
   const [historyInput, setHistoryInput] = useState('');
   const [marketPrices, setMarketPrices] = useState<Record<string, { normal: string; cash: string }>>({
@@ -388,6 +402,13 @@ export default function App() {
           lineContractDons.push(val);
         }
       }
+      if (lineContractDons.length === 0) {
+        const val = extractListedWeight(line);
+        if (val) {
+          resultsByPurity[purityKey].contractDons.push(val);
+          lineContractDons.push(val);
+        }
+      }
 
       // 라인 시작 텍스트가 @출 일 때만 계약중량 적용 (@출고는 제외)
       const cleanPrefix = line.replace(/^\s*(?:[#\d]+[\.\)\-:#\s]*|\[\d+\]\s*|[-*·•]\s*)?/, '').trim();
@@ -519,7 +540,7 @@ export default function App() {
   });
 
   return (
-    <div className={isDark ? 'dark' : ''}>
+    <div className={isDark ? 'dark' : ''} data-theme={theme}>
       <div className={`min-h-screen font-sans p-4 md:p-8 transition-colors duration-200 ${isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-brand-bg text-brand-primary'}`}>
         <div className="max-w-6xl mx-auto space-y-6">
           <header className={`mb-10 flex items-start justify-between gap-4 p-6 backdrop-blur-sm rounded-3xl border shadow-sm transition-colors duration-300 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white/50 border-brand-accent'}`}>
@@ -541,8 +562,17 @@ export default function App() {
             </div>
             <div className="flex items-center gap-3">
               <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full border uppercase tracking-widest transition-colors duration-300 ${isDark ? 'bg-brand-accent/20 text-brand-accent border-brand-accent/30' : 'bg-brand-accent/10 text-brand-primary border-brand-accent/20'}`}>
-                V3.6.0
+                V4.0.0
               </span>
+              <button
+                onClick={toggleTheme}
+                className={`flex items-center gap-1.5 px-3 py-3 rounded-2xl shadow-md border text-xs font-bold transition-all active:scale-95 ${isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800' : 'bg-white text-brand-primary border-brand-accent hover:bg-zinc-50'}`}
+                aria-label="Change color theme"
+                title="컬러 테마 변경"
+              >
+                <Palette className="w-5 h-5" />
+                <span className="hidden sm:inline">{theme === 'classic' ? '클래식' : '모던'}</span>
+              </button>
               <button
                 onClick={() => setIsDark(!isDark)}
                 className={`p-3 rounded-2xl shadow-md border transition-all active:scale-95 ${isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800' : 'bg-white text-brand-primary border-brand-accent hover:bg-zinc-50'}`}
@@ -600,7 +630,7 @@ export default function App() {
                   onPaste={handlePaste}
                   data-placeholder="여기에 주문 텍스트를 붙여넣으세요..."
                     className={`flex-1 w-full p-8 focus:outline-none overflow-auto text-[15px] leading-relaxed editable scrollbar-thin transition-colors duration-300 ${
-                      isDark ? 'bg-zinc-800/20 scrollbar-thumb-zinc-800' : 'bg-[#F0E7D6] scrollbar-thumb-brand-secondary'
+                      isDark ? 'bg-zinc-800/20 scrollbar-thumb-zinc-800' : 'bg-brand-input scrollbar-thumb-brand-secondary'
                     }`}
                     suppressContentEditableWarning
                 />
@@ -612,7 +642,7 @@ export default function App() {
                   onPaste={handlePaste}
                   data-placeholder="여기에 내역 텍스트를 입력하세요... (예: 핑크 12.5g ... @출고 12.3g)"
                   className={`flex-1 w-full p-8 focus:outline-none overflow-auto text-[15px] leading-relaxed editable scrollbar-thin transition-colors duration-300 ${
-                    isDark ? 'bg-zinc-800/40 scrollbar-thumb-zinc-800' : 'bg-[#F0E7D6] scrollbar-thumb-brand-secondary'
+                    isDark ? 'bg-zinc-800/40 scrollbar-thumb-zinc-800' : 'bg-brand-input scrollbar-thumb-brand-secondary'
                   }`}
                   suppressContentEditableWarning
                 />
@@ -721,7 +751,7 @@ export default function App() {
               <div className={`flex-1 w-full p-6 overflow-auto transition-colors duration-300 ${
                 activeTab === 'link' 
                   ? (isDark ? 'bg-brand-accent/5' : 'bg-brand-accent/5')
-                  : (isDark ? 'bg-brand-primary/10' : 'bg-[#F0E7D6]')
+                  : (isDark ? 'bg-brand-primary/10' : 'bg-brand-input')
               }`}>
                 {activeTab === 'class1' && (
                   hasOutput ? (
@@ -1323,6 +1353,7 @@ export default function App() {
                             if (!contractWeightNum) {
                               const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                               if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                              if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                             }
 
                             // Release Weight extraction
@@ -1546,6 +1577,7 @@ export default function App() {
                               if (!contractWeightNum) {
                                 const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                                 if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                                if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                               }
                               
                               const hasReleaseExplicit = /@출고\s*(\d+(?:\.\d+)?)(g?)/i.test(line);
@@ -1662,7 +1694,7 @@ export default function App() {
                               : items.filter(it => it.line.includes('@출') || it.hasClasp).map(it => {
                                   if (it.isAtChul) {
                                     // @출 있는 경우 중량만 표기, 0을 빼고 금액만 남김
-                                    return `${it.idx + 1}- ${it.itemName} ${it.contractWeightNum}돈\nM${formatNumber(it.finalPrice)}`;
+                                    return `${it.idx + 1}- ${it.itemName} ${it.contractWeightNum}돈 ▷ M${formatNumber(it.finalPrice)}`;
                                   }
 
                                   const weightDiffLabel = it.diffDon < 0 ? ' 추가' : (it.diffDon > 0 ? ' 차감' : '');
@@ -1709,7 +1741,7 @@ export default function App() {
                                     if (it.isAtChul) {
                                       // @출 있는 경우 중량만 표기, 수식내역 일체 표기 안 함
                                       const gramWeight = (Math.round(it.contractWeightNum * 3.75 * 100) / 100).toFixed(2).replace(/\.00$/, '');
-                                      const titleLine = `${it.idx + 1}- 출고 ${it.purityKey} ${it.contractWeightNum}돈 (${gramWeight}g) ${it.itemName}\n`;
+                                      const titleLine = `${it.idx + 1}- @출 ${it.purityKey} ${it.contractWeightNum}돈(${gramWeight}g) ${it.itemName}\n`;
                                       const priceLine = `▷ ${formatFullPriceWithWonAndStorage(it.finalPrice, it.itemDownPaymentNum)}`;
                                       return `${titleLine}${priceLine}`;
                                     }
@@ -1907,6 +1939,7 @@ export default function App() {
                             if (!contractWeightNum) {
                               const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                               if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                              if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                             }
 
                             const hasReleaseExplicit = /@출고\s*(\d+(?:\.\d+)?)(g?)/i.test(line);
@@ -2189,6 +2222,7 @@ export default function App() {
                             if (!contractWeightNum) {
                               const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                               if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                              if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                             }
 
                             const hasReleaseExplicit = /@출고\s*(\d+(?:\.\d+)?)(g?)/i.test(line);
@@ -2285,7 +2319,7 @@ export default function App() {
 
                           const copyPreviewText = items.filter(it => it.line.includes('@출') || it.hasClasp).map(it => {
                             if (it.isAtChul) {
-                              return `${it.idx + 1}- ${it.itemName} ${it.contractWeightNum}돈\nM${formatNumber(it.finalPriceNormal)}`;
+                              return `${it.idx + 1}- ${it.itemName} ${it.contractWeightNum}돈 ▷ M${formatNumber(it.finalPriceNormal)}`;
                             }
 
                             const weightDiffLabel = it.diffDon < 0 ? ' 추가' : (it.diffDon > 0 ? ' 차감' : '');
@@ -2308,7 +2342,7 @@ export default function App() {
                             items.filter(it => it.line.includes('@출') || it.hasClasp).map(it => {
                               if (it.isAtChul) {
                                 const gramWeight = (Math.round(it.contractWeightNum * 3.75 * 100) / 100).toFixed(2).replace(/\.00$/, '');
-                                const titleLine = `${it.idx + 1}- 출고 ${it.purityKey} ${it.contractWeightNum}돈 (${gramWeight}g) ${it.itemName}\n`;
+                                const titleLine = `${it.idx + 1}- @출 ${it.purityKey} ${it.contractWeightNum}돈(${gramWeight}g) ${it.itemName}\n`;
                                 const priceLine = `▷ ${formatFullPriceWithWonAndStorage(it.finalPrice, it.itemDownPaymentNum)}`;
                                 return `${titleLine}${priceLine}`;
                               }
@@ -2578,6 +2612,7 @@ export default function App() {
                           if (contractWeightNum === 0) {
                             const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                             if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                            if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                           }
 
                           const releaseWeight = calcDData[`line-${idx}`]?.releaseWeight !== undefined 
@@ -3009,6 +3044,7 @@ export default function App() {
                             if (contractWeightNum === 0) {
                               const donMatch = line.match(/(\d+(?:\.\d+)?)\s*돈/i);
                               if (donMatch) contractWeightNum = parseFloat(donMatch[1]);
+                              if (!contractWeightNum) contractWeightNum = extractListedWeight(line);
                             }
 
                             const releaseWeight = calcDData[`line-${idx}`]?.releaseWeight !== undefined 
@@ -3263,7 +3299,7 @@ export default function App() {
                             items.map(it => {
                               if (it.isAtChul) {
                                 const gramWeight = (Math.round(it.contractWeightNum * 3.75 * 100) / 100).toFixed(2).replace(/\.00$/, '');
-                                const titleLine = `${it.idx + 1}- 출고 ${it.purityKey} ${it.contractWeightNum}돈 (${gramWeight}g) ${it.itemName}\n`;
+                                const titleLine = `${it.idx + 1}- @출 ${it.purityKey} ${it.contractWeightNum}돈(${gramWeight}g) ${it.itemName}\n`;
                                 const priceLineNormal = buildSmsPriceDetail('정상가', it.productPriceNormalNum, 0, it.adjustedProductPriceNormal, it.finalPriceNormal, it.effectiveDownPaymentNum, it.effectiveDiscountNum, true);
                                 const priceLineCash = buildSmsPriceDetail('현금가', it.productPriceCashNum, 0, it.adjustedProductPriceCash, it.finalPriceCash, it.effectiveDownPaymentNum, it.effectiveDiscountNum, true);
                                 return `${titleLine}${priceLineNormal}\n${priceLineCash}`;

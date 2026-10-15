@@ -6,6 +6,27 @@
   --color-brand-secondary: #2D3436;
   --color-brand-accent: #D4AF37;
   --color-brand-bg: #F9F9F9;
+  --color-brand-input: #F0E7D6;
+}
+
+/* 모던 테마: 높은 대비의 슬레이트 + 블루 */
+[data-theme="modern"] {
+  --color-brand-primary: #0F172A;
+  --color-brand-secondary: #475569;
+  --color-brand-accent: #3B82F6;
+  --color-brand-bg: #EEF2F7;
+  --color-brand-input: #FFFFFF;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+}
+
+[data-theme="modern"] .editable {
+  font-size: 16px;
+  color: #0F172A;
+}
+
+[data-theme="modern"].dark .editable,
+.dark [data-theme="modern"] .editable {
+  color: #E2E8F0;
 }
 
 .editable:empty:before {
